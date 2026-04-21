@@ -1,9 +1,9 @@
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tauri::{AppHandle, Emitter};
-use regex::Regex;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DownloadResult {
@@ -57,13 +57,15 @@ async fn open_path(path: String) -> Result<(), String> {
     }
 }
 
-/// Download audio from YouTube URL
+/// Download audio or video from YouTube URL
 #[tauri::command]
-async fn download_audio(
+async fn download_media(
     app_handle: AppHandle,
     url: String,
     output_path: String,
     filename: String,
+    download_type: String,
+    quality: String,
 ) -> Result<DownloadResult, String> {
     // Validate URL
     if !url.contains("youtube.com") && !url.contains("youtu.be") {
@@ -75,17 +77,64 @@ async fn download_audio(
         return Err(format!("Output path does not exist: {}", output_path));
     }
 
-    let output_file = format!("{}/{}.mp3", output_path, filename);
+    let (output_file, mut cmd_args): (String, Vec<String>) = match download_type.as_str() {
+        "audio" => {
+            let file = format!("{}/{}.mp3", output_path, filename);
+            let args = vec![
+                "--newline".to_string(),
+                "-x".to_string(),
+                "--audio-format".to_string(),
+                "mp3".to_string(),
+                "--audio-quality".to_string(),
+                match quality.as_str() {
+                    "highest" => "0",
+                    "high" => "64",
+                    "medium" => "128",
+                    "low" => "192",
+                    _ => "128",
+                }
+                .to_string(),
+                "-o".to_string(),
+                file.clone(),
+            ];
+            (file, args)
+        }
+        "video" => {
+            let file = format!("{}/{}.mp4", output_path, filename);
+            let format_spec = match quality.as_str() {
+                "4k" => "bestvideo[height=2160]+bestaudio/best[height=2160]",
+                "1440p" => "bestvideo[height=1440]+bestaudio/best[height=1440]",
+                "1080p" => "bestvideo[height=1080]+bestaudio/best[height=1080]",
+                "720p" => "bestvideo[height=720]+bestaudio/best[height=720]",
+                "480p" => "bestvideo[height=480]+bestaudio/best[height=480]",
+                "best" => "bestvideo+bestaudio/best",
+                _ => "bestvideo[height=720]+bestaudio/best[height=720]",
+            };
+            let args = vec![
+                "--newline".to_string(),
+                "-f".to_string(),
+                format_spec.to_string(),
+                "--merge-output-format".to_string(),
+                "mp4".to_string(),
+                "-o".to_string(),
+                file.clone(),
+            ];
+            (file, args)
+        }
+        _ => {
+            return Err(format!(
+                "Invalid download type: {}. Must be 'audio' or 'video'",
+                download_type
+            ))
+        }
+    };
+
+    // Add URL as last argument
+    cmd_args.push(url);
 
     // Execute yt-dlp command
     let mut child = tokio::process::Command::new("yt-dlp")
-        .arg("--newline")
-        .arg("-x")
-        .arg("--audio-format")
-        .arg("mp3")
-        .arg("-o")
-        .arg(&output_file)
-        .arg(&url)
+        .args(&cmd_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -95,7 +144,7 @@ async fn download_audio(
         let mut reader = BufReader::new(stdout).lines();
         // Setup regex to extract progress
         let re = Regex::new(r"\[download\]\s+([\d\.]+)%\s+of\s+([~\s\d\.]+([a-zA-Z]+)?)\s+at\s+([~\s\d\.]+([a-zA-Z]+/s)?)\s+ETA\s+([\d:]+)").unwrap();
-        
+
         while let Ok(Some(line)) = reader.next_line().await {
             if let Some(caps) = re.captures(&line) {
                 if let Ok(percent) = caps[1].parse::<f64>() {
@@ -103,28 +152,60 @@ async fn download_audio(
                     let speed = caps[4].trim().to_string();
                     let eta = caps[6].trim().to_string();
 
-                    let _ = app_handle.emit("download-progress", ProgressPayload {
-                        percent,
-                        size,
-                        speed,
-                        eta,
-                    });
+                    let _ = app_handle.emit(
+                        "download-progress",
+                        ProgressPayload {
+                            percent,
+                            size,
+                            speed,
+                            eta,
+                        },
+                    );
                 }
             }
         }
     }
 
-    let status = child.wait().await.map_err(|e| format!("Failed to wait: {}", e))?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait: {}", e))?;
 
     if status.success() {
+        let message = format!("{}  downloaded successfully!", {
+            match download_type.as_str() {
+                "audio" => "Audio",
+                "video" => "Video",
+                _ => "Media",
+            }
+        });
         Ok(DownloadResult {
             success: true,
-            message: "Audio downloaded successfully".to_string(),
+            message,
             file_path: Some(output_file),
         })
     } else {
         Err(format!("yt-dlp exited with status: {}", status))
     }
+}
+
+/// Download audio from YouTube URL (deprecated, use download_media instead)
+#[tauri::command]
+async fn download_audio(
+    app_handle: AppHandle,
+    url: String,
+    output_path: String,
+    filename: String,
+) -> Result<DownloadResult, String> {
+    download_media(
+        app_handle,
+        url,
+        output_path,
+        filename,
+        "audio".to_string(),
+        "128".to_string(),
+    )
+    .await
 }
 
 /// Check if yt-dlp is installed
@@ -151,6 +232,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
+            download_media,
             download_audio,
             check_ytdlp_installed,
             get_default_download_path,

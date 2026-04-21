@@ -1,5 +1,5 @@
 {
-  "app_title": "دانلودر صوتی YouTube",
+  "app_title": "دانلودر یوتیوب",
   "url_label": "آدرس URL یوتیوب",
   "url_placeholder": "آدرس یوتیوب را اینجا چسبانید...",
   "filename_label": "نام فایل",
@@ -26,5 +26,19 @@
   "download_progress": "در حال دانلود...",
   "file_saved": "فایل ذخیره شد در:",
   "rename_file": "تغییر نام",
-  "file_renamed": "نام فایل با موفقیت تغییر یافت"
+  "file_renamed": "نام فایل با موفقیت تغییر یافت",
+  "download_type_label": "نوع دانلود",
+  "download_type_audio": "صوت (MP3)",
+  "download_type_video": "ویدیو (MP4)",
+  "quality_label": "کیفیت",
+  "quality_highest": "بالاترین (320 kbps)",
+  "quality_high": "بالا (192 kbps)",
+  "quality_medium": "متوسط (128 kbps)",
+  "quality_low": "پایین (96 kbps)",
+  "quality_4k": "4K (2160p)",
+  "quality_1440p": "1440p",
+  "quality_1080p": "1080p (تمام صفحه)",
+  "quality_720p": "720p (HD)",
+  "quality_480p": "480p",
+  "quality_best": "بهترین دسترس پذیر"
 }

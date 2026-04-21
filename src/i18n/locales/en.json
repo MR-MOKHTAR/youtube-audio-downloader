@@ -1,5 +1,5 @@
 {
-  "app_title": "YouTube Audio Downloader",
+  "app_title": "YouTube Downloader",
   "url_label": "YouTube URL",
   "url_placeholder": "Paste YouTube URL here...",
   "filename_label": "File Name",
@@ -26,5 +26,19 @@
   "download_progress": "Downloading...",
   "file_saved": "File saved to:",
   "rename_file": "Rename",
-  "file_renamed": "File renamed successfully"
+  "file_renamed": "File renamed successfully",
+  "download_type_label": "Download Type",
+  "download_type_audio": "Audio (MP3)",
+  "download_type_video": "Video (MP4)",
+  "quality_label": "Quality",
+  "quality_highest": "Highest (320 kbps)",
+  "quality_high": "High (192 kbps)",
+  "quality_medium": "Medium (128 kbps)",
+  "quality_low": "Low (96 kbps)",
+  "quality_4k": "4K (2160p)",
+  "quality_1440p": "1440p",
+  "quality_1080p": "1080p (Full HD)",
+  "quality_720p": "720p (HD)",
+  "quality_480p": "480p",
+  "quality_best": "Best Available"
 }

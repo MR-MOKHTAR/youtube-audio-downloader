@@ -18,6 +18,8 @@ import {
   Minus,
   Square,
   X,
+  ChevronDown,
+  Play,
 } from "lucide-react";
 import i18n from "./i18n";
 
@@ -53,11 +55,13 @@ function App() {
   const [downloadStats, setDownloadStats] = useState<ProgressPayload | null>(
     null,
   );
-  const [lastFilePath, setLastFilePath] = useState<string | null>(null);
   const [downloadSuccessInfo, setDownloadSuccessInfo] = useState<{
     path: string;
     name: string;
   } | null>(null);
+  const [downloadType, setDownloadType] = useState<"audio" | "video">("audio");
+  const [audioQuality, setAudioQuality] = useState("128");
+  const [videoQuality, setVideoQuality] = useState("720p");
 
   // Window Controls
   const minimize = () => getCurrentWindow().minimize();
@@ -285,23 +289,25 @@ function App() {
     setDownloadSuccessInfo(null);
 
     try {
-      const result = await invoke<DownloadResult>("download_audio", {
+      const quality = downloadType === "audio" ? audioQuality : videoQuality;
+      const result = await invoke<DownloadResult>("download_media", {
         url: url.trim(),
         outputPath: savePath,
-        filename: filename.trim() || "audio",
+        filename: filename.trim() || "media",
+        downloadType: downloadType,
+        quality: quality,
       });
 
       if (result.success) {
         const downloadDir =
           result.file_path?.substring(0, result.file_path.lastIndexOf("/")) ||
           savePath;
-        setLastFilePath(downloadDir);
         setDownloadSuccessInfo({
           path: downloadDir,
           name:
             result.file_path?.split("/").pop() ||
             filename.trim() ||
-            "audio.mp3",
+            (downloadType === "audio" ? "audio.mp3" : "video.mp4"),
         });
         setAlert({
           type: "success",
@@ -361,7 +367,7 @@ function App() {
           darkMode
             ? "bg-slate-900 border-slate-800 text-white"
             : "bg-blue-50 border-blue-200 text-gray-900"
-        } border-b z-50 select-none sticky top-0 h-12 flex items-center justify-between px-4 transition-colors duration-300`}
+        } border-b z-50 select-none sticky top-0 h-10 flex items-center justify-between px-4 transition-colors duration-300`}
         dir="ltr"
       >
         {/* Left: App Title and Icon */}
@@ -475,16 +481,38 @@ function App() {
             darkMode
               ? "bg-slate-900 border-slate-800 shadow-2xl"
               : "bg-white border-blue-200"
-          } border rounded-2xl p-8 shadow-lg`}
+          } border rounded-2xl p-8 shadow-lg relative overflow-hidden`}
         >
+          {/* Form Header - Centered */}
+          <div className="flex flex-col items-center justify-center gap-4 mb-10 text-center">
+            <div className="relative">
+              <motion.div
+                animate={{
+                  boxShadow: [
+                    "0 0 0px 0px rgba(239, 68, 68, 0)",
+                    "0 0 15px 4px rgba(239, 68, 68, 0.4)",
+                    "0 0 0px 0px rgba(239, 68, 68, 0)",
+                  ],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="p-4 rounded-full bg-linear-to-br from-red-500 to-red-600 text-white shadow-lg"
+              >
+                <Play className="w-6 h-6 fill-white ml-0.5" />
+              </motion.div>
+            </div>
+          </div>
           {/* URL Input */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="mb-6"
+            className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
           >
-            <label className="block text-sm font-semibold mb-2">
+            <label className="sm:w-32 text-sm font-bold opacity-70 mb-1 sm:mb-0 shrink-0">
               {t("url_label")}
             </label>
             <input
@@ -493,11 +521,11 @@ function App() {
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("url_placeholder")}
               disabled={isDownloading}
-              className={`w-full px-4 py-3 rounded-lg border-2 cursor-text ${
+              className={`flex-1 px-4 py-2.5 rounded-xl border-2 cursor-text transition-all ${
                 darkMode
-                  ? "bg-slate-800 border-slate-700 focus:border-blue-500"
-                  : "bg-blue-50 border-blue-300 focus:border-blue-500"
-              } focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all disabled:opacity-50`}
+                  ? "bg-slate-800/50 border-slate-700 focus:border-blue-500"
+                  : "bg-blue-50/50 border-blue-200 focus:border-blue-500"
+              } focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50`}
             />
           </motion.div>
 
@@ -506,9 +534,9 @@ function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="mb-6"
+            className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
           >
-            <label className="block text-sm font-semibold mb-2">
+            <label className="sm:w-32 text-sm font-bold opacity-70 mb-1 sm:mb-0 shrink-0">
               {t("filename_label")}
             </label>
             <input
@@ -517,33 +545,221 @@ function App() {
               onChange={(e) => setFilename(e.target.value)}
               placeholder={t("filename_placeholder")}
               disabled={isDownloading}
-              className={`w-full px-4 py-3 rounded-lg border-2 cursor-text ${
+              className={`flex-1 px-4 py-2.5 rounded-xl border-2 cursor-text transition-all ${
                 darkMode
-                  ? "bg-slate-800 border-slate-700 focus:border-blue-500"
-                  : "bg-blue-50 border-blue-300 focus:border-blue-500"
-              } focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all disabled:opacity-50`}
+                  ? "bg-slate-800/50 border-slate-700 focus:border-blue-500"
+                  : "bg-blue-50/50 border-blue-200 focus:border-blue-500"
+              } focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50`}
             />
+          </motion.div>
+
+          {/* Unified Settings Box */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8 p-6 rounded-2xl border ${
+              darkMode
+                ? "bg-slate-800/40 border-slate-700/50 shadow-inner"
+                : "bg-blue-50/30 border-blue-200/50 shadow-sm"
+            }`}
+          >
+            {/* Download Type Selection */}
+            <div>
+              <label className="block text-sm font-bold mb-4 opacity-80 uppercase tracking-wider">
+                {t("download_type_label")}
+              </label>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="radio"
+                      name="downloadType"
+                      value="audio"
+                      checked={downloadType === "audio"}
+                      onChange={(e) =>
+                        setDownloadType(e.target.value as "audio" | "video")
+                      }
+                      disabled={isDownloading}
+                      className="peer w-5 h-5 cursor-pointer appearance-none rounded-full border-2 border-slate-400 checked:border-blue-500 transition-all"
+                    />
+                    <div className="absolute w-2.5 h-2.5 rounded-full bg-blue-500 scale-0 peer-checked:scale-100 transition-transform" />
+                  </div>
+                  <span className="text-sm font-semibold group-hover:text-blue-500 transition-colors">
+                    {t("download_type_audio")}
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="radio"
+                      name="downloadType"
+                      value="video"
+                      checked={downloadType === "video"}
+                      onChange={(e) =>
+                        setDownloadType(e.target.value as "audio" | "video")
+                      }
+                      disabled={isDownloading}
+                      className="peer w-5 h-5 cursor-pointer appearance-none rounded-full border-2 border-slate-400 checked:border-blue-500 transition-all"
+                    />
+                    <div className="absolute w-2.5 h-2.5 rounded-full bg-blue-500 scale-0 peer-checked:scale-100 transition-transform" />
+                  </div>
+                  <span className="text-sm font-semibold group-hover:text-blue-500 transition-colors">
+                    {t("download_type_video")}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Quality Selection */}
+            <div>
+              <label className="block text-sm font-bold mb-3 opacity-80 uppercase tracking-wider">
+                {t("quality_label")}
+              </label>
+              <div className="relative group">
+                {downloadType === "audio" ? (
+                  <select
+                    value={audioQuality}
+                    onChange={(e) => setAudioQuality(e.target.value)}
+                    disabled={isDownloading}
+                    className={`w-full px-4 py-3 rounded-xl border-2 cursor-pointer font-bold appearance-none transition-all ${
+                      darkMode
+                        ? "bg-slate-900 border-slate-700 text-white focus:border-blue-500 hover:border-slate-600"
+                        : "bg-white border-blue-200 text-gray-900 focus:border-blue-500 hover:border-blue-300"
+                    } focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50`}
+                    style={{ colorScheme: darkMode ? "dark" : "light" }}
+                  >
+                    <option
+                      value="0"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_highest")}
+                    </option>
+                    <option
+                      value="64"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_high")}
+                    </option>
+                    <option
+                      value="128"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_medium")}
+                    </option>
+                    <option
+                      value="192"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_low")}
+                    </option>
+                  </select>
+                ) : (
+                  <select
+                    value={videoQuality}
+                    onChange={(e) => setVideoQuality(e.target.value)}
+                    disabled={isDownloading}
+                    className={`w-full px-4 py-3 rounded-xl border-2 cursor-pointer font-bold appearance-none transition-all ${
+                      darkMode
+                        ? "bg-slate-900 border-slate-700 text-white focus:border-blue-500 hover:border-slate-600"
+                        : "bg-white border-blue-200 text-gray-900 focus:border-blue-500 hover:border-blue-300"
+                    } focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50`}
+                    style={{ colorScheme: darkMode ? "dark" : "light" }}
+                  >
+                    <option
+                      value="4k"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_4k")}
+                    </option>
+                    <option
+                      value="1440p"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_1440p")}
+                    </option>
+                    <option
+                      value="1080p"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_1080p")}
+                    </option>
+                    <option
+                      value="720p"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_720p")}
+                    </option>
+                    <option
+                      value="480p"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_480p")}
+                    </option>
+                    <option
+                      value="best"
+                      style={{
+                        backgroundColor: darkMode ? "#0f172a" : "white",
+                        color: darkMode ? "white" : "black",
+                      }}
+                    >
+                      {t("quality_best")}
+                    </option>
+                  </select>
+                )}
+                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity">
+                  <ChevronDown className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           {/* Save Location */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8"
+            transition={{ delay: 0.4 }}
+            className="mb-8 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
           >
-            <label className="block text-sm font-semibold mb-2">
+            <label className="sm:w-32 text-sm font-bold opacity-70 mb-1 sm:mb-0 shrink-0">
               {t("save_location")}
             </label>
-            <div className="flex gap-3" style={{ direction: "ltr" }}>
+            <div className="flex-1 flex gap-3" style={{ direction: "ltr" }}>
               <input
                 type="text"
                 value={savePath}
                 readOnly
-                className={`flex-1 px-4 py-3 rounded-lg border-2 cursor-default ${
+                className={`flex-1 px-4 py-2.5 rounded-xl border-2 cursor-default transition-all ${
                   darkMode
-                    ? "bg-slate-800 border-slate-700"
-                    : "bg-blue-50 border-blue-300"
+                    ? "bg-slate-800/50 border-slate-700"
+                    : "bg-blue-50/50 border-blue-200"
                 } focus:outline-none`}
               />
               <motion.button
@@ -551,13 +767,13 @@ function App() {
                 whileTap={{ scale: 0.95 }}
                 onClick={selectFolder}
                 disabled={isDownloading}
-                className={`px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer ${
                   darkMode
-                    ? "bg-slate-800 hover:bg-slate-700"
-                    : "bg-blue-200 hover:bg-blue-300"
+                    ? "bg-slate-800 hover:bg-slate-700 border border-slate-700"
+                    : "bg-blue-100 hover:bg-blue-200 border border-blue-200"
                 } disabled:opacity-50`}
               >
-                <Folder className="w-4 h-4" />
+                <Folder className="w-4 h-4 text-blue-500" />
                 {t("browse_button")}
               </motion.button>
             </div>
@@ -774,15 +990,6 @@ function App() {
             <div className="flex-1">
               <p className="font-semibold">{t(`${alert.type}`)}</p>
               <p className="text-sm opacity-90 mt-1">{alert.message}</p>
-              {alert.type === "success" && lastFilePath && (
-                <button
-                  onClick={() => openPath(lastFilePath)}
-                  className="mt-2 text-sm font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Folder className="w-4 h-4" />
-                  {t("open_folder") || "Open Folder"}
-                </button>
-              )}
               {(alert.type === "error" || alert.type === "warning") &&
                 !isOnline && (
                   <button
@@ -813,7 +1020,7 @@ function App() {
         transition={{ delay: 0.5 }}
         className={`${
           darkMode ? "border-slate-800" : "border-blue-200"
-        } border-t ${darkMode ? "bg-slate-900" : "bg-white"} text-center py-4 text-sm opacity-60`}
+        } border-t ${darkMode ? "bg-slate-900" : "bg-white"} text-center py-2 text-sm opacity-60`}
       >
         <p dir="ltr">© 2026 YouTube Audio Downloader. Made with ❤️</p>
       </motion.footer>

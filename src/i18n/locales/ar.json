@@ -1,5 +1,5 @@
 {
-  "app_title": "محمل الصوت من YouTube",
+  "app_title": "محمّل YouTube",
   "url_label": "عنوان URL لـ YouTube",
   "url_placeholder": "الصق عنوان YouTube هنا...",
   "filename_label": "اسم الملف",
@@ -26,5 +26,19 @@
   "download_progress": "جاري التحميل...",
   "file_saved": "تم حفظ الملف في:",
   "rename_file": "إعادة تسمية",
-  "file_renamed": "تمت إعادة تسمية الملف بنجاح"
+  "file_renamed": "تمت إعادة تسمية الملف بنجاح",
+  "download_type_label": "نوع التحميل",
+  "download_type_audio": "صوت (MP3)",
+  "download_type_video": "فيديو (MP4)",
+  "quality_label": "الجودة",
+  "quality_highest": "الأعلى (320 kbps)",
+  "quality_high": "عالي (192 kbps)",
+  "quality_medium": "متوسط (128 kbps)",
+  "quality_low": "منخفض (96 kbps)",
+  "quality_4k": "4K (2160p)",
+  "quality_1440p": "1440p",
+  "quality_1080p": "1080p (Full HD)",
+  "quality_720p": "720p (HD)",
+  "quality_480p": "480p",
+  "quality_best": "أفضل متاح"
 }
