@@ -1,6 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -24,6 +24,60 @@ pub struct ProgressPayload {
     pub size: String,
     pub speed: String,
     pub eta: String,
+}
+
+/// Get the path to the bundled yt-dlp binary
+fn get_ytdlp_path() -> Result<PathBuf, String> {
+    // Try to get bundled binary first
+    let binary_name = if cfg!(target_os = "windows") {
+        "yt-dlp.exe"
+    } else {
+        "yt-dlp"
+    };
+
+    // Look in the app's resource directory (bundled binaries)
+    if let Ok(app_dir) = std::env::current_exe() {
+        if let Some(app_dir) = app_dir.parent() {
+            let bundled_path = if cfg!(target_os = "windows") {
+                app_dir.join("binaries").join("yt-dlp.exe")
+            } else {
+                app_dir.join("binaries").join("yt-dlp")
+            };
+
+            if bundled_path.exists() {
+                return Ok(bundled_path);
+            }
+        }
+    }
+
+    // Fallback: try system PATH
+    if Command::new(binary_name)
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+    {
+        return Ok(PathBuf::from(binary_name));
+    }
+
+    Err(
+        "yt-dlp not found. Please ensure yt-dlp is installed or bundled with the application."
+            .to_string(),
+    )
+}
+
+/// Ensure yt-dlp binary has proper permissions (Linux only)
+fn ensure_ytdlp_executable(path: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let perms = fs::Permissions::from_mode(0o755);
+        fs::set_permissions(path, perms)
+            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+    }
+    Ok(())
 }
 
 /// Open a file or directory in the system file manager
@@ -132,8 +186,14 @@ async fn download_media(
     // Add URL as last argument
     cmd_args.push(url);
 
+    // Get the path to yt-dlp binary
+    let ytdlp_path = get_ytdlp_path()?;
+
+    // Ensure executable permissions (especially important on Linux)
+    ensure_ytdlp_executable(&ytdlp_path)?;
+
     // Execute yt-dlp command
-    let mut child = tokio::process::Command::new("yt-dlp")
+    let mut child = tokio::process::Command::new(&ytdlp_path)
         .args(&cmd_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -208,19 +268,26 @@ async fn download_audio(
     .await
 }
 
-/// Check if yt-dlp is installed
+/// Check if yt-dlp is installed (bundled or in system PATH)
 #[tauri::command]
 fn check_ytdlp_installed() -> bool {
-    Command::new("yt-dlp")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    match get_ytdlp_path() {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }
 
 /// Get default downloads path
 #[tauri::command]
 fn get_default_download_path() -> String {
+    if cfg!(target_os = "windows") {
+        // Windows: use %USERPROFILE%\Downloads
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            return format!("{}\\Downloads", userprofile);
+        }
+    }
+
+    // macOS and Linux: use ~/Downloads
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     format!("{}/Downloads", home)
 }
