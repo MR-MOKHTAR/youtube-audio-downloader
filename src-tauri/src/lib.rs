@@ -29,7 +29,7 @@ pub struct ProgressPayload {
 /// Get the path to the bundled yt-dlp binary
 fn get_ytdlp_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     use tauri::Manager;
-    
+
     // Try to get bundled binary first
     let binary_name = if cfg!(target_os = "windows") {
         "yt-dlp.exe"
@@ -76,9 +76,17 @@ fn ensure_ytdlp_executable(path: &Path) -> Result<(), String> {
         use std::fs;
         use std::os::unix::fs::PermissionsExt;
 
-        let perms = fs::Permissions::from_mode(0o755);
-        fs::set_permissions(path, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+        if let Ok(metadata) = fs::metadata(path) {
+            let mode = metadata.permissions().mode();
+            // If it already has execute permissions for anyone, we don't need to chmod
+            if mode & 0o111 == 0 {
+                let perms = fs::Permissions::from_mode(mode | 0o111);
+                // We ignore the error here because if we don't have permissions to chmod
+                // (e.g. read-only filesystem or owned by root), it will fail.
+                // The subsequent spawn() will fail properly if it's truly not executable.
+                let _ = fs::set_permissions(path, perms);
+            }
+        }
     }
     Ok(())
 }
@@ -197,7 +205,8 @@ async fn download_media(
 
     // Execute yt-dlp command
     let mut std_cmd = std::process::Command::new(&ytdlp_path);
-    std_cmd.args(&cmd_args)
+    std_cmd
+        .args(&cmd_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
