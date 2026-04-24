@@ -27,7 +27,9 @@ pub struct ProgressPayload {
 }
 
 /// Get the path to the bundled yt-dlp binary
-fn get_ytdlp_path() -> Result<PathBuf, String> {
+fn get_ytdlp_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    use tauri::Manager;
+    
     // Try to get bundled binary first
     let binary_name = if cfg!(target_os = "windows") {
         "yt-dlp.exe"
@@ -36,17 +38,10 @@ fn get_ytdlp_path() -> Result<PathBuf, String> {
     };
 
     // Look in the app's resource directory (bundled binaries)
-    if let Ok(app_dir) = std::env::current_exe() {
-        if let Some(app_dir) = app_dir.parent() {
-            let bundled_path = if cfg!(target_os = "windows") {
-                app_dir.join("binaries").join("yt-dlp.exe")
-            } else {
-                app_dir.join("binaries").join("yt-dlp")
-            };
-
-            if bundled_path.exists() {
-                return Ok(bundled_path);
-            }
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        let bundled_path = resource_dir.join("binaries").join(binary_name);
+        if bundled_path.exists() {
+            return Ok(bundled_path);
         }
     }
 
@@ -187,7 +182,7 @@ async fn download_media(
     cmd_args.push(url);
 
     // Get the path to yt-dlp binary
-    let ytdlp_path = get_ytdlp_path()?;
+    let ytdlp_path = get_ytdlp_path(&app_handle)?;
 
     // Ensure executable permissions (especially important on Linux)
     ensure_ytdlp_executable(&ytdlp_path)?;
@@ -270,8 +265,8 @@ async fn download_audio(
 
 /// Check if yt-dlp is installed (bundled or in system PATH)
 #[tauri::command]
-fn check_ytdlp_installed() -> bool {
-    match get_ytdlp_path() {
+fn check_ytdlp_installed(app_handle: AppHandle) -> bool {
+    match get_ytdlp_path(&app_handle) {
         Ok(_) => true,
         Err(_) => false,
     }

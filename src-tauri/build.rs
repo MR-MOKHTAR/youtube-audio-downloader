@@ -19,8 +19,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Determine the yt-dlp binary name based on target OS
     let (ytdlp_name, asset_pattern) = match target_os.as_str() {
-        "windows" => ("yt-dlp.exe", "yt-dlp_windows.exe"),
-        "linux" => ("yt-dlp", "yt-dlp"),
+        "windows" => ("yt-dlp.exe", "yt-dlp.exe"),
+        "linux" => ("yt-dlp", "yt-dlp_linux"),
+        "macos" => ("yt-dlp", "yt-dlp_macos"),
         _ => {
             eprintln!(
                 "Warning: yt-dlp bundling not supported for target OS: {}",
