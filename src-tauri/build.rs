@@ -4,8 +4,6 @@ use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // First, always run the default tauri build
-    tauri_build::build();
 
     // Get the target triple
     let target_os = env::var("CARGO_CFG_TARGET_OS")?;
@@ -110,6 +108,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Tell Cargo to re-run this build script if environment variable changes
     println!("cargo:rerun-if-env-changed=FORCE_YTDLP_DOWNLOAD");
+
+    // Finally, run the default tauri build which will validate resources
+    tauri_build::build();
 
     Ok(())
 }
