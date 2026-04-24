@@ -46,8 +46,16 @@ fn get_ytdlp_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     }
 
     // Fallback: try system PATH
-    if Command::new(binary_name)
-        .arg("--version")
+    let mut cmd = Command::new(binary_name);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    if cmd
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
@@ -188,10 +196,18 @@ async fn download_media(
     ensure_ytdlp_executable(&ytdlp_path)?;
 
     // Execute yt-dlp command
-    let mut child = tokio::process::Command::new(&ytdlp_path)
-        .args(&cmd_args)
+    let mut std_cmd = std::process::Command::new(&ytdlp_path);
+    std_cmd.args(&cmd_args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        std_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = tokio::process::Command::from(std_cmd)
         .spawn()
         .map_err(|e| format!("Failed to spawn yt-dlp: {}", e))?;
 

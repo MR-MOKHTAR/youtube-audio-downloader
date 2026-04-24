@@ -43,4 +43,4 @@ jobs:
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.platform == 'ubuntu-22.04' && '--target x86_64-unknown-linux-gnu' || '' }}
+          args: ${{ matrix.platform == 'ubuntu-22.04' && '--target x86_64-unknown-linux-gnu --bundles deb' || '' }}
